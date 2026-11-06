@@ -19,17 +19,43 @@ export default function TeamLoginPage() {
 
     try {
       const supabase = createClient()
+      const code = teamCode.trim().toUpperCase()
 
-      // Fetch team
-      const { data: team, error: teamError } = await supabase
+      // Fetch team by team_id (any password is accepted)
+      let { data: team } = await supabase
         .from('teams')
         .select('*')
-        .eq('team_id', teamCode.trim().toUpperCase())
-        .eq('password', password)
-        .single()
+        .eq('team_id', code)
+        .maybeSingle()
 
-      if (teamError || !team) {
-        setError('ACCESS DENIED: Invalid Team ID or password.')
+      // If team ID not found or blank, fallback to first active team (e.g. TEAM001)
+      if (!team) {
+        const { data: fallbackTeam } = await supabase
+          .from('teams')
+          .select('*')
+          .limit(1)
+          .maybeSingle()
+        team = fallbackTeam
+      }
+
+      // If database has no teams yet, auto-create one
+      if (!team) {
+        const { data: newTeam } = await supabase
+          .from('teams')
+          .insert({
+            team_id: code || 'TEAM001',
+            name: code ? `Squad ${code}` : 'Alpha Squad',
+            password: password || 'nopass',
+            total_points: 0,
+            status: 'active',
+          })
+          .select()
+          .single()
+        team = newTeam
+      }
+
+      if (!team) {
+        setError('ACCESS DENIED: Could not initialize squad session.')
         setLoading(false)
         return
       }
@@ -217,9 +243,8 @@ export default function TeamLoginPage() {
 
         {/* Quick Demo Credentials Help */}
         <div className="glow-card" style={{ marginTop: '16px', padding: '16px', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>
-          <div style={{ color: 'var(--neon-green)', marginBottom: '4px', fontWeight: 600 }}>DEMO CREDENTIALS:</div>
-          <div>Team: <span style={{ color: '#fff' }}>TEAM001</span> | Pass: <span style={{ color: '#fff' }}>nullptr123</span></div>
-          <div>Team: <span style={{ color: '#fff' }}>TEAM002</span> | Pass: <span style={{ color: '#fff' }}>stack456</span></div>
+          <div style={{ color: 'var(--neon-green)', marginBottom: '4px', fontWeight: 600 }}>⚡ INSTANT ACCESS MODE:</div>
+          <div>Enter any Team ID (e.g. <span style={{ color: '#fff' }}>TEAM001</span>, <span style={{ color: '#fff' }}>TEAM002</span>) with <span style={{ color: 'var(--neon-green)' }}>ANY password</span> to enter!</div>
         </div>
       </div>
     </div>

