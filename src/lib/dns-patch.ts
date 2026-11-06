@@ -1,5 +1,5 @@
-// DNS patch for local router DNS cache delay
-if (typeof window === 'undefined') {
+// DNS patch for local router DNS cache delay (only active in local Node.js environment)
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
   try {
     const dns = require('dns')
     const originalLookup = dns.lookup
@@ -21,6 +21,6 @@ if (typeof window === 'undefined') {
       return originalLookup(hostname, options, callback)
     }
   } catch {
-    // Ignore in edge runtime
+    // Ignore in edge or serverless runtime
   }
 }

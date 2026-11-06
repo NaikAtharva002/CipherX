@@ -1,10 +1,11 @@
 import '@/lib/dns-patch'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/config'
 
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
